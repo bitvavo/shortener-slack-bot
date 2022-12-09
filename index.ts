@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, {isAxiosError} from "axios";
 import * as dotenv from 'dotenv'
 import * as env from 'env-var';
 const { App } = require('@slack/bolt');
@@ -46,14 +46,25 @@ app.command('/shorten', async ({ command, ack, say }) => {
     [url, id] = args
     console.log(`Shortening url: ${url}, id: ${id}`)
     console.log(command)
-    const shortenedUrl = await shortenUrl({url, id})
-    await say({
-        text: `Shortened url: ${shortenedUrl}`,
-        replace_original: false,
-        response_type: 'ephemeral',
-        unfurl_links: false,
-        unfurl_media: false,
-    });
+
+    try {
+        const shortenedUrl = await shortenUrl({url, id})
+
+        await say({
+            text: `Shortened url: ${shortenedUrl}`,
+            replace_original: false,
+            response_type: 'ephemeral',
+            unfurl_links: false,
+            unfurl_media: false,
+        });
+    } catch (e) {
+        if(isAxiosError(e) && e.response.data?.message === 'Error The specific id you chose is already in use') {
+            await say(`id ${id} already in use, try something else`)
+        } else {
+            throw e
+        }
+    }
+
 });
 
 (async () => {
